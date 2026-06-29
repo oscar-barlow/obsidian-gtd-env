@@ -17,6 +17,9 @@
   truth.**
 - `Templates/Weekly Review.md` — the weekly review template.
 - `GTD/Meta/Weekly Reviews/` — completed reviews, named `Weekly Review <D.M.YY>.md`.
+- `GTD/Meta/Analytics.md` -- charts about recent activity. Must be parsed through 
+   dataview.
+- `GTD/Meta/Urgent-Important.md` -- classic Eisenhower matrix.
 
 > **`List.md` and `GTD/Meta/Review.md` are Dataview dashboards.** They render only in
 > the Obsidian GUI (and this vault has `enableDataviewJs: false`, so the `dataviewjs`
@@ -62,6 +65,15 @@ read the `VEVENT`s directly — filter to ±2 weeks of today and expand any recu
 If the fetch fails (secret missing / host not allowlisted), fall back to asking me to
 check my calendar manually.
 
+## Linear & Notion
+Linear and Notion are available over MCP. Data about what work has recently been done
+also live in there. Consequently, when forming a view about neglected projects,
+or whether there are any goals that haven't had work done against them, check
+These 2 data sources. Names won't match up so you'll have to figure it out. 
+Linear is more useful than Notion in this respect - you can see tasks completed in it,
+whereas you have to infer work done and associated project/goal by looking at activity
+logs in Notion. Linear tracks work, Notion has evidence of work done. 
+
 ## Task format (match exactly when adding/completing)
 ```
 - [ ] <action> [project:: [[Project Name]]] - [context:: <context>] - [timescale:: <next | waiting | YYYY-MM-DD>]
@@ -78,16 +90,11 @@ then review** — kept deliberately separate. Run it **conversationally**: one t
 at a time, listen, follow up, write my answers into the note in my voice. Never
 invent answers; if I skip something, leave it blank.
 
-1. **Process to zero first (separate gear).** Clearing `GTD/Inbox.md` and due
-   `GTD/Tickler.md` items is *processing* — handled by the Process flow
-   (`GTD/Process.md`, a consolidated inbox + due-tickler view), not the review.
-   Make sure that's done (offer to run it) before starting the review proper.
-
-2. **Open/create the note.** From `Templates/Weekly Review.md`, create
+1. **Open/create the note.** From `Templates/Weekly Review.md`, create
    `GTD/Meta/Weekly Reviews/Weekly Review <D.M.YY>.md` and set `date:` (YYYY-MM-DD).
    If one already exists for today, open it rather than overwriting.
 
-3. **Work the template top-to-bottom, strictly in order.** Don't reorder, skip, or
+2. **Work the template top-to-bottom, strictly in order.** Don't reorder, skip, or
    inject sections — the template evolves deliberately, together (see below).
    Capture each answer under its heading. While on the relevant headings:
    - **Mental health (1–10)** comes first — also set the `mentalHealth` frontmatter.
@@ -101,12 +108,12 @@ invent answers; if I skip something, leave it blank.
      inline (filter to the window, expand recurring events); review it with me (fall
      back to asking me to check manually if it errors).
 
-4. **Update the system from what we discussed** (Obsidian CLI preferred): add new
+3. **Update the system from what we discussed** (Obsidian CLI preferred): add new
    tasks in the house format; mark finished ones done with today's `[completion::]`;
    complete/activate/archive projects as agreed (set `completionDate`, move to
    `Archive/`).
 
-5. **Close out per the template.** Offer a one-line **Work Log** entry; flag
+4. **Close out per the template.** Offer a one-line **Work Log** entry; flag
    anything worth promoting to the **Brag Doc**. **Then `ob sync`** to push
    everything back to Obsidian and confirm what changed. (A `Stop` hook runs
    `ob sync` as a safety net, but don't rely on it.)
