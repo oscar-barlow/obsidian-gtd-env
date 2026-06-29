@@ -53,6 +53,15 @@ Changes live in the container and are lost unless pushed to Obsidian Sync.
 **Always `ob sync --path /home/obs/vault` at the end of a review/session** so the new
 review note and task edits upload. (The startup hook handles the initial pull.)
 
+## Calendar (Proton)
+The review's calendar check reads a **Proton "share with anyone"** ICS link — read-only,
+revocable, *no Proton account credentials* — from the `SECRET_PROTON_CAL_ICS` env secret.
+Fetch and parse it inline (no script, no deps): `curl -fsS "$SECRET_PROTON_CAL_ICS"`, then
+read the `VEVENT`s directly — filter to ±2 weeks of today and expand any recurring
+(`RRULE`) events into that window. Requires the egress policy to allow `calendar.proton.me`.
+If the fetch fails (secret missing / host not allowlisted), fall back to asking me to
+check my calendar manually.
+
 ## Task format (match exactly when adding/completing)
 ```
 - [ ] <action> [project:: [[Project Name]]] - [context:: <context>] - [timescale:: <next | waiting | YYYY-MM-DD>]
@@ -88,7 +97,9 @@ invent answers; if I skip something, leave it blank.
      active project must have ≥1 open next action; for anything stalled, agree a
      concrete next action (or defer/drop). Surface `timescale: waiting` tasks here
      and nudge me on stale ones.
-   - **Calendar ±2 weeks** → prompt me to check my actual calendar.
+   - **Calendar ±2 weeks** → `curl -fsS "$SECRET_PROTON_CAL_ICS"` and parse the iCal
+     inline (filter to the window, expand recurring events); review it with me (fall
+     back to asking me to check manually if it errors).
 
 4. **Update the system from what we discussed** (Obsidian CLI preferred): add new
    tasks in the house format; mark finished ones done with today's `[completion::]`;
