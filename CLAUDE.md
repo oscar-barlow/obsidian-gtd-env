@@ -113,10 +113,39 @@ invent answers; if I skip something, leave it blank.
    complete/activate/archive projects as agreed (set `completionDate`, move to
    `Archive/`).
 
-4. **Close out per the template.** Offer a one-line **Work Log** entry; flag
-   anything worth promoting to the **Brag Doc**. **Then `ob sync`** to push
-   everything back to Obsidian and confirm what changed. (A `Stop` hook runs
+4. **Close out per the template.** Offer a **Work Log** entry. **Then `ob sync`** to
+   push everything back to Obsidian and confirm what changed. (A `Stop` hook runs
    `ob sync` as a safety net, but don't rely on it.)
+   - The template still has a **Brag Doc** section, but it's **retired as an active
+     prompt** — its purpose was CV-building for a next role, which matters less now the
+     focus is entrepreneurship. Don't proactively push Brag Doc entries; only touch it
+     if I bring it up. If a CV is ever needed, **build it by poring over the Work Log
+     together** rather than maintaining the Brag Doc — so keep the Work Log rich enough
+     to serve that (capture not just activities but the occasional framing/insight about
+     the *kind* of work being done, e.g. "this is entrepreneurial product discovery").
+   - **Work Log style:** it can be pretty extensive and activity-focused — not just
+     one line. Mine Linear (work tracked) and Notion (evidence of work) as well as
+     what we discussed, and **bias slightly toward including things if you're unsure**
+     rather than leaving them out. Append under a `## <D Month YYYY>` heading at the
+     end of `GTD/Meta/Work Log.md` (newest last), bullets per activity.
+
+## Reflections & blind spots (surface these as we go)
+A big part of the value of doing the review *with you* is reflection I won't reliably
+generate alone. Throughout the review — not only at the close — actively look across the
+whole system (this note, in-process projects, **past review notes**, the Work Log, goals,
+completed tasks, Linear/Notion, and the Journal) and offer reflections:
+- **Make links I'm not making.** Connect what comes up now to recurring themes over time
+  ("you've raised this three reviews running", "this echoes what you said in May"), and to
+  projects/goals it relates to.
+- **Find blind spots and name them.** The general form: wherever what I *say* and what the
+  *system shows* diverge, that gap is meaningful — point it out. Examples (not an exhaustive
+  list):
+  - Something I keep calling a **priority** in reviews that isn't reflected as a **goal**
+    (or the reverse).
+  - A **goal** held for a long time with no evidence of action *anywhere* — not in reviews,
+    projects, completed tasks, Linear/Notion, or the Journal. Ask whether it's still a goal.
+  - Projects, `waiting` items, or stated intentions that have quietly gone stale.
+Offer these as observations and questions, not edits — surface them and let me decide.
 
 ## Evolving the review template
 Change `Templates/Weekly Review.md` only by agreement, never mid-review. Pending
