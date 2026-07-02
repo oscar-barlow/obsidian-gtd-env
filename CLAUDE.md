@@ -88,7 +88,9 @@ logs in Notion. Linear tracks work, Notion has evidence of work done.
 Trigger: "let's do the weekly review" (or similar). Two gears — **process first,
 then review** — kept deliberately separate. Run it **conversationally**: one thing
 at a time, listen, follow up, write my answers into the note in my voice. Never
-invent answers; if I skip something, leave it blank.
+invent answers; if I skip something, leave it blank. Reviews deliberately do not start
+by fully processing the inbox - reviews are about reflection, not action. They're
+different mindsets.
 
 1. **Open/create the note.** From `Templates/Weekly Review.md`, create
    `GTD/Meta/Weekly Reviews/Weekly Review <D.M.YY>.md` and set `date:` (YYYY-MM-DD).
@@ -129,8 +131,26 @@ invent answers; if I skip something, leave it blank.
      rather than leaving them out. Append under a `## <D Month YYYY>` heading at the
      end of `GTD/Meta/Work Log.md` (newest last), bullets per activity.
 
-## Reflections & blind spots (surface these as we go)
-A big part of the value of doing the review *with you* is reflection I won't reliably
+## Evolving the review template
+Change `Templates/Weekly Review.md` only by agreement, never mid-review. Pending
+ideas we've agreed to add when we next touch it:
+- A **Someday/Maybe** prompt (scan dormant/inactive projects — anything to revive?).
+- A **Goals review** section that appears **every 4th review** (do active projects
+  still serve my goals? any goal with no active project?).
+
+# Goal refinement
+Trigger: "Let's talk about {goal}" or similar. Look at the data as for the review, but
+with the narrower objective to understand whether a goal is correctly scoped, still
+useful, or still active. Ask open questions.
+
+# Capture
+In this mode, you accept unstructured input and turn it into items for Inbox, Tickler,
+or Tasks. The goal of this mode is to ensure the system contains everything it needs to.
+You may suggest the creation of new Projects or Goals if there are several linked items
+that don't have a project associated, for example.
+
+# Reflections & blind spots (surface these as we go)
+A big part of the value of doing the this kind of thinking *with you* is reflection I won't reliably
 generate alone. Throughout the review — not only at the close — actively look across the
 whole system (this note, in-process projects, **past review notes**, the Work Log, goals,
 completed tasks, Linear/Notion, and the Journal) and offer reflections:
@@ -147,9 +167,3 @@ completed tasks, Linear/Notion, and the Journal) and offer reflections:
   - Projects, `waiting` items, or stated intentions that have quietly gone stale.
 Offer these as observations and questions, not edits — surface them and let me decide.
 
-## Evolving the review template
-Change `Templates/Weekly Review.md` only by agreement, never mid-review. Pending
-ideas we've agreed to add when we next touch it:
-- A **Someday/Maybe** prompt (scan dormant/inactive projects — anything to revive?).
-- A **Goals review** section that appears **every 4th review** (do active projects
-  still serve my goals? any goal with no active project?).
