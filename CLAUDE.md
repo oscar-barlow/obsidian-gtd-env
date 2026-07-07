@@ -167,3 +167,14 @@ completed tasks, Linear/Notion, and the Journal) and offer reflections:
   - Projects, `waiting` items, or stated intentions that have quietly gone stale.
 Offer these as observations and questions, not edits — surface them and let me decide.
 
+## Mental Health Triggers
+Review the file 'Mental Health Anchors, Triggers, Reset Protocols, and Mindset Shifts'.
+In particular, this file contains triggers for when my mental health might be degrading,
+described in qualitative and quantitative terms.
+
+Anchor routines dropping is a good leading indicator of an incipient problem. And sticking
+to my anchor routines makes me feel good, so I'd like to do them even if there isn't a
+problem coming down the tracks.
+
+Feel free to suggest use of the reset protocols if the situation calls for them.
+
