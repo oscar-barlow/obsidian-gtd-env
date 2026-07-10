@@ -158,8 +158,10 @@ fi
 
 # Restricted Mode off (idempotent) + ensure plugins loaded.
 obx() { sudo -u "${OBS_USER}" -- env DISPLAY="${DISPLAY_NUM}" obsidian "$@" 2>/dev/null; }
-# One round-trip to the renderer instead of three.
-obx eval "code=app.plugins.setEnable(true);app.plugins.enablePlugin('dataview');app.plugins.enablePlugin('obsidian-charts')" >/dev/null
+# One round-trip to the renderer. setEnable/enablePlugin return Promises, so await
+# them in sequence (with a beat after setEnable for the plugin system to init) —
+# otherwise enablePlugin fires before community plugins are on and nothing loads.
+obx eval code='(async()=>{await app.plugins.setEnable(true);await new Promise(r=>setTimeout(r,2000));await app.plugins.enablePlugin("dataview");await app.plugins.enablePlugin("obsidian-charts");return Object.keys(app.plugins.plugins).join(",")})()' >/dev/null
 echo "Obsidian ready. Loaded: $(obx eval "code=Object.keys(app.plugins.plugins).join(',')")"
 EOF
 sudo chmod +x /usr/local/bin/obsidian-up
