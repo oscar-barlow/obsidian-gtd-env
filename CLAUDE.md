@@ -5,6 +5,9 @@
 - This repo exists only to provide the `.claude/` hooks. Any `GTD/`, `Templates/`,
   or note files *in the repo* are template/scaffold — **never read them as live data
   or edit them during a review.** All GTD work happens in `/home/obs/vault`.
+- **`scripts/setup-script.sh` is not part of GTD work — ignore it during reviews and
+  goal/capture sessions.** It's the environment build script (documented in `README.md`),
+  only relevant when explicitly changing environment setup.
 - If the vault hasn't synced (files missing under `/home/obs/vault/GTD`), say so and
   stop — don't fall back to repo template data.
 
