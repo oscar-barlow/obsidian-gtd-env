@@ -143,15 +143,20 @@ echo '["dataview","obsidian-charts"]' \
 sudo chown -R "${OBS_USER}:${OBS_USER}" "${VAULT_DIR}"
 
 # Launch a persistent virtual display + the GUI (the CLI socket server), as obs.
+# `setsid` is load-bearing: this runs from a SessionStart hook, and when the hook
+# finishes the harness tears down its whole process group. `nohup` only blocks
+# SIGHUP, so without a fresh session/process group both Xvfb and the GUI die
+# moments after the hook reports success — the socket appears just long enough
+# for the checks below to pass, then every later `obx` call finds nothing home.
 if ! pgrep -f "Xvfb ${DISPLAY_NUM}" >/dev/null; then
-  sudo -u "${OBS_USER}" nohup Xvfb "${DISPLAY_NUM}" -screen 0 1280x800x24 \
-    >/tmp/xvfb.log 2>&1 &
+  sudo -u "${OBS_USER}" setsid nohup Xvfb "${DISPLAY_NUM}" -screen 0 1280x800x24 \
+    >/tmp/xvfb.log 2>&1 </dev/null &
   sleep 1
 fi
 if [ ! -S "${SOCK}" ]; then
-  sudo -u "${OBS_USER}" -- env DISPLAY="${DISPLAY_NUM}" nohup \
+  sudo -u "${OBS_USER}" -- env DISPLAY="${DISPLAY_NUM}" setsid nohup \
     /opt/Obsidian/obsidian --disable-gpu --disable-dev-shm-usage \
-    >"/home/${OBS_USER}/gui.log" 2>&1 &
+    >"/home/${OBS_USER}/gui.log" 2>&1 </dev/null &
   for _ in $(seq 1 90); do [ -S "${SOCK}" ] && break; sleep 0.5; done
 fi
 [ -S "${SOCK}" ] || { echo "obsidian-up: CLI socket never appeared." >&2; exit 1; }
@@ -162,7 +167,23 @@ obx() { sudo -u "${OBS_USER}" -- env DISPLAY="${DISPLAY_NUM}" obsidian "$@" 2>/d
 # them in sequence (with a beat after setEnable for the plugin system to init) —
 # otherwise enablePlugin fires before community plugins are on and nothing loads.
 obx eval code='(async()=>{await app.plugins.setEnable(true);await new Promise(r=>setTimeout(r,2000));await app.plugins.enablePlugin("dataview");await app.plugins.enablePlugin("obsidian-charts");return Object.keys(app.plugins.plugins).join(",")})()' >/dev/null
-echo "Obsidian ready. Loaded: $(obx eval "code=Object.keys(app.plugins.plugins).join(',')")"
+
+# Assert the plugins really loaded rather than echoing whatever the eval returned.
+# The CLI prints its own startup banner on stdout and prefixes real results with
+# "=> ", so a dead renderer yields a line that still reads like success
+# ("Obsidian ready. Loaded: <timestamp> Loaded main app package ..."). Grep for
+# the plugin ids instead; without Dataview the session can't query live state.
+loaded="$(obx eval "code=Object.keys(app.plugins.plugins).join(',')")"
+missing=""
+for p in dataview obsidian-charts; do
+  case "${loaded}" in *"${p}"*) ;; *) missing="${missing} ${p}";; esac
+done
+if [ -n "${missing}" ]; then
+  echo "obsidian-up: GUI is up but these plugins did not load:${missing}" >&2
+  echo "obsidian-up: see /home/${OBS_USER}/gui.log" >&2
+  exit 1
+fi
+echo "Obsidian ready. Plugins loaded: dataview, obsidian-charts"
 EOF
 sudo chmod +x /usr/local/bin/obsidian-up
 
