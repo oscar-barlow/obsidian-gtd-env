@@ -29,7 +29,14 @@
 > blocks don't even render there) — from the filesystem you just see query code. To get
 > *results*, query the Dataview API through the Obsidian CLI (see below). `Review.md`
 > still encodes the useful definition of a *neglected* project (active with no open next
-> action, or no completed task in ~2 weeks) — **apply that logic** via the API.
+> action, or no completed task in ~2 weeks) — **apply that logic** via the API, **but
+> weigh it against note activity too.** A lot of real work here lands as *notes* — files
+> tagged to a project (the project's Dataview tag: its name lowercased, spaces/hyphens →
+> `_`, apostrophes stripped) or notes modified within the window — rather than as
+> completed tasks. A project with recent note activity is **not** neglected even if no
+> task closed, so always check notes generated *alongside* completed tasks (and
+> Linear/Notion) before flagging anything. The task-only view routinely mislabels
+> actively-worked projects (branding, medication, product strategy) as stalled.
 
 ## Driving Obsidian via its CLI
 A headless Obsidian GUI runs at session start with a CLI socket. Invoke it as the
@@ -41,7 +48,8 @@ This is the **preferred** way to read live state and make changes (the running a
 owns the vault, so edits reconcile cleanly). Useful commands:
 - `obs read path=<p>` · `obs search query=<text>` · `obs files` · `obs tasks` (filter!).
 - `obs create path=<p> content=<text>` · `obs append file=<n> content=<text>`.
-- `obs property:read file=<n> key=<k>` · `obs property:set file=<n> key=<k> value=<v>`.
+- `obs property:read file=<n> key=<k>` · `obs property:set file=<n> name=<k> value=<v>`
+  (note: `property:set` takes `name=`, **not** `key=`; add `type=text|number|...` for new keys).
 - `obs task ref=<path:line>` — show/update a single task (e.g. mark done).
 - `obs template:read file="Weekly Review"` — read a template.
 - **`obs eval code='<js>'`** — run JS in the renderer; this is how you reach Dataview:
@@ -53,6 +61,20 @@ owns the vault, so edits reconcile cleanly). Useful commands:
   ```
   Task fields are first-class: `t.project`, `t.context`, `t.timescale`, `t.completed`.
   Quote `code=` in single quotes and use backticks for the inner Dataview source string.
+
+### Session-start gotchas (both cost real time if missed)
+- **Dataview/Charts not loaded?** If `app.plugins.plugins.dataview` is `undefined` (and
+  `app.plugins.isEnabled()` is `false`), community plugins are in **Restricted Mode** —
+  they're listed in `community-plugins.json` but the master switch is off, so individual
+  `enablePlugin`/`loadPlugin` calls silently no-op. Flip it once per session:
+  `obs eval code='(async()=>{await app.plugins.setEnable(true);})()'`, then wait ~1–2s and
+  re-check `Object.keys(app.plugins.plugins)`. Give Dataview a moment to index before querying.
+- **Run `ob sync` as the `obs` user** (`sudo -u obs -- env DISPLAY=:99 ob sync …`), *never*
+  as root. Syncing as root leaves the pulled files owned by `root:root`; the Obsidian app
+  runs as `obs` and then can't write them — appends/edits fail with `EACCES` while *new*
+  files still succeed (confusing). If it happens, fix with `chown -R obs:obs /home/obs/vault`.
+  The startup hook already pulls as `obs`; a big initial sync may still be in flight, so wait
+  for the core files (`GTD/Tasks.md` etc.) before trusting the vault.
 
 ## Syncing
 Changes live in the container and are lost unless pushed to Obsidian Sync.
@@ -105,10 +127,15 @@ different mindsets.
    - **Mental health (1–10)** comes first — also set the `mentalHealth` frontmatter.
      Compare to last review's score for trend.
    - **Projects** → render the active project list via `eval`.
-   - **Neglected projects** → apply `Review.md`'s neglect logic via `eval`. Every
-     active project must have ≥1 open next action; for anything stalled, agree a
-     concrete next action (or defer/drop). Surface `timescale: waiting` tasks here
-     and nudge me on stale ones.
+   - **Neglected projects** → apply `Review.md`'s neglect logic via `eval`. **Before
+     flagging anything as stalled, check for recent note activity** (notes carrying the
+     project's Dataview tag, or notes modified in the window) as well as completed tasks
+     and Linear/Notion — work is often captured as notes, not ticked tasks, and the
+     task-only view routinely mislabels actively-worked projects as neglected. Every
+     genuinely stalled active project should get a concrete next action (or defer/drop);
+     for actively-worked-but-untasked ones, offer to capture the next action so they stop
+     tripping the neglect logic. Surface `timescale: waiting` tasks here and nudge me on
+     stale ones.
    - **Calendar ±2 weeks** → `curl -fsS "$SECRET_PROTON_CAL_ICS"` and parse the iCal
      inline (filter to the window, expand recurring events); review it with me (fall
      back to asking me to check manually if it errors).
