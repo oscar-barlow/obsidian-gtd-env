@@ -69,12 +69,21 @@ owns the vault, so edits reconcile cleanly). Useful commands:
   `enablePlugin`/`loadPlugin` calls silently no-op. Flip it once per session:
   `obs eval code='(async()=>{await app.plugins.setEnable(true);})()'`, then wait ~1–2s and
   re-check `Object.keys(app.plugins.plugins)`. Give Dataview a moment to index before querying.
-- **Run `ob sync` as the `obs` user** (`sudo -u obs -- env DISPLAY=:99 ob sync …`), *never*
-  as root. Syncing as root leaves the pulled files owned by `root:root`; the Obsidian app
-  runs as `obs` and then can't write them — appends/edits fail with `EACCES` while *new*
-  files still succeed (confusing). If it happens, fix with `chown -R obs:obs /home/obs/vault`.
-  The startup hook already pulls as `obs`; a big initial sync may still be in flight, so wait
-  for the core files (`GTD/Tasks.md` etc.) before trusting the vault.
+- **`ob sync` must run as root** — the sync config lives in root's home, so
+  `sudo -u obs … ob sync` fails with *"No sync configuration found for /home/obs/vault"*
+  (and `ob` isn't on the `obs` PATH under sudo anyway). The catch is the flip side: a
+  root-run sync leaves pulled/updated files owned by `root:root`, and the Obsidian app runs
+  as `obs`, so the app's later appends/edits fail with `EACCES` — while *new* files it
+  creates still succeed, which is confusing. So after **any** mid-session sync, run
+  `chown -R obs:obs /home/obs/vault` before using the app again. Prefer not to sync mid-session
+  at all: the startup hook does the initial pull and a Stop hook syncs at the end. A big
+  initial sync may still be in flight at session start, so wait for the core files
+  (`GTD/Tasks.md` etc.) before trusting the vault.
+- **If the headless Obsidian app segfaults mid-session** (the `obs` CLI starts returning
+  `Segmentation fault` / `PING FAILED`), it won't recover this session. Since the app is
+  what owns the vault, once it's dead there's nothing to conflict with — just edit the vault
+  files directly on disk (they're `obs`-owned after the chown above) and let the final root
+  `ob sync` push them. `property:set`/`append`/`eval` are all gone, so do the rest by hand.
 
 ## Syncing
 Changes live in the container and are lost unless pushed to Obsidian Sync.
