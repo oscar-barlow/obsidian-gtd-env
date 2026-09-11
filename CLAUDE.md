@@ -169,6 +169,11 @@ different mindsets.
      what we discussed, and **bias slightly toward including things if you're unsure**
      rather than leaving them out. Append under a `## <D Month YYYY>` heading at the
      end of `GTD/Meta/Work Log.md` (newest last), bullets per activity.
+     **The gloss: this feeds a future CV.** So it's professional accomplishments only —
+     no personal/family/health content (including ADHD medication, mental health state),
+     and no scheduled-but-not-yet-happened items (a meeting that's been set up but hasn't
+     occurred, an appointment on the calendar) — only things actually done. When in doubt
+     whether something is CV-shaped work, leave it out and ask rather than include it.
 
 ## Evolving the review template
 Change `Templates/Weekly Review.md` only by agreement, never mid-review. Pending
