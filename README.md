@@ -11,7 +11,10 @@ version control. It installs Obsidian + the Dataview/Charts plugins and the `obs
 helper (session-time vault sync + headless launch); the SessionStart hook runs
 `obsidian-up` each session.
 
-This file is **not** run from the repo — it takes effect only when its contents are
-pasted into the **Setup script** field of the Claude environment config. It has already
-been pasted there. So the workflow is: edit `scripts/setup-script.sh` → commit → paste
-the updated contents back into the web environment.
+The Claude environment config's **Setup script** field itself holds only
+`scripts/bootstrap.sh` — a few lines that `curl` this file from the repo's `master`
+branch and run it. So the workflow is: edit `scripts/setup-script.sh` → commit → merge to
+`master`; the next environment build picks it up automatically, with no separate paste
+into the web UI. (This only needs setting up once — see `scripts/bootstrap.sh` for the
+exact contents to paste into that field, and note it floats on `master`, so a broken
+commit there breaks the next build until fixed.)
