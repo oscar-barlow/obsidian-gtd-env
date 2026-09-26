@@ -12,9 +12,18 @@ helper (session-time vault sync + headless launch); the SessionStart hook runs
 `obsidian-up` each session.
 
 The Claude environment config's **Setup script** field itself holds only
-`scripts/bootstrap.sh` — a few lines that `curl` this file from the repo's `master`
-branch and run it. So the workflow is: edit `scripts/setup-script.sh` → commit → merge to
-`master`; the next environment build picks it up automatically, with no separate paste
-into the web UI. (This only needs setting up once — see `scripts/bootstrap.sh` for the
-exact contents to paste into that field, and note it floats on `master`, so a broken
-commit there breaks the next build until fixed.)
+`scripts/bootstrap.sh` — a few lines that resolve the latest `live-YYYY-MM-DD` tag and
+`curl` `scripts/setup-script.sh` as of that tag, then run it. (This only needs setting up
+once — see `scripts/bootstrap.sh` for the exact contents to paste into that field.)
+
+`master` can move freely — WIP, review, whatever — without affecting what new
+environments build from. Going live is a deliberate act: once a change is merged and you
+actually want it live, cut a dated tag:
+
+```
+git tag "live-$(date +%F)" && git push origin "live-$(date +%F)"
+```
+
+The next environment build picks it up automatically — no paste into the web UI, no edit
+to `bootstrap.sh`. If no `live-*` tag exists yet, the bootstrap script fails loudly with
+that same command rather than silently doing nothing.
