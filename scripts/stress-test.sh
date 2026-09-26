@@ -90,8 +90,9 @@ phase_preflight() {
   ck '[ -n "${p}" ] && [ "$(readlink /proc/${p}/cwd)" = "${CRASH_DIR}" ]' "GUI cwd is not ${CRASH_DIR} (cores would go elsewhere)"
   ck 'gui_ok' "eval 1+1 did not return => 2"
   ck 'obx eval "code=Object.keys(app.plugins.plugins).join()" | grep -q dataview' "Dataview not loaded"
+  ck 'obx eval "code=app.plugins.plugins.dataview.api.pages().length>=app.vault.getMarkdownFiles().length" | grep -q true' "Dataview index incomplete (partial answers)"
   ck '[ -s "${VAULT}/GTD/Tasks.md" ]' "vault not synced (no GTD/Tasks.md)"
-  record preflight checks 10 "${fails}" 0 "${note}"
+  record preflight checks 11 "${fails}" 0 "${note}"
   { obx version; echo "obx: $(head -2 /usr/local/bin/obx | tail -1)"; echo "gui pid ${p}";
     [ -n "${p}" ] && grep -E 'core file|open files' "/proc/${p}/limits";
     echo "vault files: $(find "${VAULT}" -type f -not -path '*/.obsidian/*' | wc -l)"; } >"${OUT}/env.txt" 2>&1

@@ -389,7 +389,25 @@ if [ -n "${missing}" ]; then
   echo "obsidian-up: see /home/${OBS_USER}/gui.log" >&2
   exit 1
 fi
-echo "Obsidian ready. Plugins loaded: dataview, obsidian-charts"
+
+# "Plugins loaded" is not "Dataview can answer". On a cold start (empty
+# IndexedDB, i.e. every fresh container) Dataview sets index.initialized=true
+# almost immediately and then keeps filling in as Obsidian parses files:
+# measured from the moment the plugins loaded, dv.pages() went 967 -> 2177 and
+# the active-project count 0 -> 13 over ~3s. A query in that window gets a
+# partial but plausible answer ("no active projects"), not an error. So wait
+# until Dataview has a page for every markdown file the vault knows about.
+indexed=""
+for _ in $(seq 1 60); do
+  case "$(obx eval 'code=app.plugins.plugins.dataview.api.pages().length>=app.vault.getMarkdownFiles().length')" in
+    *true*) indexed=1; break ;;
+  esac
+  sleep 1
+done
+if [ -z "${indexed}" ]; then
+  echo "obsidian-up: warning: Dataview index still incomplete after 60s; early Dataview answers may be partial." >&2
+fi
+echo "Obsidian ready. Plugins loaded: dataview, obsidian-charts$([ -n "${indexed}" ] && echo "; Dataview index complete")"
 EOF
 sudo chmod +x /usr/local/bin/obsidian-up
 

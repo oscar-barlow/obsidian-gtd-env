@@ -76,7 +76,13 @@ owns the vault, so edits reconcile cleanly). Useful commands:
   they're listed in `community-plugins.json` but the master switch is off, so individual
   `enablePlugin`/`loadPlugin` calls silently no-op. Flip it once per session:
   `obs eval code='(async()=>{await app.plugins.setEnable(true);})()'`, then wait ~1–2s and
-  re-check `Object.keys(app.plugins.plugins)`. Give Dataview a moment to index before querying.
+  re-check `Object.keys(app.plugins.plugins)`.
+- **Don't trust Dataview until its index is complete.** On a cold start its `index.initialized`
+  flag reads `true` while pages are still arriving, and queries return partial but plausible
+  answers (e.g. zero active projects). `obsidian-up` now waits for it and ends with
+  "Dataview index complete"; if it warned instead, or you enabled Dataview by hand, check
+  `obs eval 'code=app.plugins.plugins.dataview.api.pages().length>=app.vault.getMarkdownFiles().length'`
+  is `true` before any Dataview query.
 - **`ob sync` must run as root** — the sync config lives in root's home, so
   `sudo -u obs … ob sync` fails with *"No sync configuration found for /home/obs/vault"*
   (and `ob` isn't on the `obs` PATH under sudo anyway). The catch is the flip side: a
