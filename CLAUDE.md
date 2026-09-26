@@ -39,11 +39,19 @@
 > actively-worked projects (branding, medication, product strategy) as stalled.
 
 ## Driving Obsidian via its CLI
-A headless Obsidian GUI runs at session start with a CLI socket. Invoke it as the
-`obs` user against display `:99`:
+A headless Obsidian GUI runs at session start with a CLI socket. Talk to it with `obx`
+(installed by the setup script), which speaks the socket protocol directly:
 ```
-obs() { sudo -u obs -- env DISPLAY=:99 obsidian "$@"; }   # ignore the harmless dbus warning
+obs() { obx "$@"; }   # OBX_TIMEOUT=<secs> (default 60) bounds a call
 ```
+**Don't call the stock `obsidian <args>` client** (`sudo -u obs -- env DISPLAY=:99
+obsidian …`) — it boots a whole Electron instance per call and is the source of every CLI
+failure seen so far: it's what segfaulted on 26.9.26; `search` intermittently returns
+*nothing* (its EOF stdin half-closes the socket, and the GUI then drops async replies);
+big outputs (`files`) hang forever after printing when stdout is a pipe; and with the GUI
+down it silently launches a second one. If `head -1 /usr/local/bin/obx` isn't
+`#!/usr/bin/env python3`, the environment predates the fix — flag it (a `live-*` tag
+needs cutting) rather than falling back to the stock client.
 This is the **preferred** way to read live state and make changes (the running app
 owns the vault, so edits reconcile cleanly). Useful commands:
 - `obs read path=<p>` · `obs search query=<text>` · `obs files` · `obs tasks` (filter!).
@@ -62,7 +70,7 @@ owns the vault, so edits reconcile cleanly). Useful commands:
   Task fields are first-class: `t.project`, `t.context`, `t.timescale`, `t.completed`.
   Quote `code=` in single quotes and use backticks for the inner Dataview source string.
 
-### Session-start gotchas (both cost real time if missed)
+### Session-start gotchas (all cost real time if missed)
 - **Dataview/Charts not loaded?** If `app.plugins.plugins.dataview` is `undefined` (and
   `app.plugins.isEnabled()` is `false`), community plugins are in **Restricted Mode** —
   they're listed in `community-plugins.json` but the master switch is off, so individual
@@ -79,11 +87,20 @@ owns the vault, so edits reconcile cleanly). Useful commands:
   at all: the startup hook does the initial pull and a Stop hook syncs at the end. A big
   initial sync may still be in flight at session start, so wait for the core files
   (`GTD/Tasks.md` etc.) before trusting the vault.
-- **If the headless Obsidian app segfaults mid-session** (the `obs` CLI starts returning
-  `Segmentation fault` / `PING FAILED`), it won't recover this session. Since the app is
-  what owns the vault, once it's dead there's nothing to conflict with — just edit the vault
-  files directly on disk (they're `obs`-owned after the chown above) and let the final root
-  `ob sync` push them. `property:set`/`append`/`eval` are all gone, so do the rest by hand.
+- **If Obsidian seems dead mid-session, check before concluding it is.** A hung or crashed
+  *client* call says nothing about the GUI (the 26.9.26 "crash" was the stock client
+  segfaulting, and the `files` call taken as proof of death was the pipe-hang bug). The
+  test is `pgrep -f '^/opt/Obsidian/obsidian --no-sandbox'` plus `obs eval code=1+1`
+  (→ `=> 2`); never use `files` as a liveness probe. `obx` reporting *"Obsidian isn't
+  running"* is definitive. If the GUI really is gone, **run `obsidian-up`** — it relaunches
+  it (and a resume re-runs it anyway). Only if that fails: edit vault files directly on
+  disk (`obs`-owned after the chown above) and let the final root `ob sync` push them.
+- **Crash forensics live in `/home/obs/crash/`.** The GUI runs with core dumps enabled
+  (cwd `/home/obs/crash`), and before any relaunch `obsidian-up` moves the previous
+  `gui.log`, `obsidian.log` and any `core` into `/home/obs/crash/<timestamp>-gui/` (newest
+  5 kept). Cores look ~1.4 TB in `ls` (V8's reserved address space) but are sparse, ~70 MB
+  on disk; `gdb -batch -ex 'thread apply all bt' /opt/Obsidian/obsidian <core>`. If a real
+  crash happens, capture the archive into the vault note before the container is reclaimed.
 
 ## Syncing
 Changes live in the container and are lost unless pushed to Obsidian Sync.

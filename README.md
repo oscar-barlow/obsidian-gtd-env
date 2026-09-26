@@ -9,7 +9,10 @@ Obsidian Sync at session start (see `CLAUDE.md`).
 The environment **Setup script** for the Claude Code (web) environment, kept here under
 version control. It installs Obsidian + the Dataview/Charts plugins and the `obsidian-up`
 helper (session-time vault sync + headless launch); the SessionStart hook runs
-`obsidian-up` each session.
+`obsidian-up` each session. It also installs `obx`, a lightweight client for the running
+app's CLI socket (use it instead of the stock `obsidian <args>` client; see `CLAUDE.md`),
+and `as-obs`, which launches the app as `obs` with core dumps enabled so crashes leave
+evidence in `/home/obs/crash/`.
 
 The Claude environment config's **Setup script** field itself holds only
 `scripts/bootstrap.sh` — a few lines that resolve the latest `live-YYYY-MM-DD` tag and
