@@ -134,6 +134,14 @@ logs in Notion. Linear tracks work, Notion has evidence of work done.
 
 ---
 
+# Testing the environment
+Trigger: "stress test the environment" (or similar), typically in a fresh session after a
+new `live-*` tag. The harness is `scripts/stress-test.sh` (phases, knobs and destructive
+steps are documented at its top); the protocol — preconditions, safety rules for the live
+vault, run order, how to judge results, and the report to write — is the vault note
+**`Obsidian GTD env testing protocol`**. Read that note first and follow it exactly;
+report, don't fix. Not part of GTD work: never run it during a review.
+
 # Running the weekly GTD review
 
 Trigger: "let's do the weekly review" (or similar). Two gears — **process first,
