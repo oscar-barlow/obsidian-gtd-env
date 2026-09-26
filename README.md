@@ -4,6 +4,18 @@ Claude Code environment for running GTD weekly reviews against an Obsidian vault
 repo provides the `.claude/` hooks; the canonical vault lives elsewhere and syncs via
 Obsidian Sync at session start (see `CLAUDE.md`).
 
+## `scripts/parse_ics.py`
+
+Parses an ICS file and lists `VEVENT`s within a date window, correctly expanding
+`RRULE`/`EXDATE`/`RDATE` and `RECURRENCE-ID` overrides. Used by the weekly review's
+calendar check (see `CLAUDE.md`) instead of parsing the raw ICS inline — RRULE
+expansion is easy to get subtly wrong and burns a lot of context done by hand.
+Depends on `python-dateutil`, installed by `scripts/setup-script.sh`.
+
+```
+python3 scripts/parse_ics.py cal.ics [--start YYYY-MM-DD] [--end YYYY-MM-DD]
+```
+
 ## `scripts/setup-script.sh`
 
 The environment **Setup script** for the Claude Code (web) environment, kept here under

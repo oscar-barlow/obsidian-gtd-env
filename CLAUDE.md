@@ -110,9 +110,13 @@ review note and task edits upload. (The startup hook handles the initial pull.)
 ## Calendar (Proton)
 The review's calendar check reads a **Proton "share with anyone"** ICS link — read-only,
 revocable, *no Proton account credentials* — from the `SECRET_PROTON_CAL_ICS` env secret.
-Fetch and parse it inline (no script, no deps): `curl -fsS "$SECRET_PROTON_CAL_ICS"`, then
-read the `VEVENT`s directly — filter to ±2 weeks of today and expand any recurring
-(`RRULE`) events into that window. Requires the egress policy to allow `calendar.proton.me`.
+Fetch it with `curl -fsS "$SECRET_PROTON_CAL_ICS" -o cal.ics`, then parse it with
+`python3 scripts/parse_ics.py cal.ics` (from this repo's checkout) to get a flat,
+chronological ±2-week event list with `RRULE`/`EXDATE`/`RDATE` and `RECURRENCE-ID`
+overrides correctly expanded — inline parsing of raw ICS (especially RRULE expansion)
+burns a lot of context and is easy to get subtly wrong, so use the script rather than
+re-deriving this by hand each review. Requires the egress policy to allow
+`calendar.proton.me`.
 If the fetch fails (secret missing / host not allowlisted), fall back to asking me to
 check my calendar manually.
 
@@ -170,9 +174,9 @@ different mindsets.
      for actively-worked-but-untasked ones, offer to capture the next action so they stop
      tripping the neglect logic. Surface `timescale: waiting` tasks here and nudge me on
      stale ones.
-   - **Calendar ±2 weeks** → `curl -fsS "$SECRET_PROTON_CAL_ICS"` and parse the iCal
-     inline (filter to the window, expand recurring events); review it with me (fall
-     back to asking me to check manually if it errors).
+   - **Calendar ±2 weeks** → `curl -fsS "$SECRET_PROTON_CAL_ICS" -o cal.ics` then
+     `python3 scripts/parse_ics.py cal.ics`; review the output with me (fall back to
+     asking me to check manually if it errors).
 
 3. **Update the system from what we discussed** (Obsidian CLI preferred): add new
    tasks in the house format; mark finished ones done with today's `[completion::]`;
