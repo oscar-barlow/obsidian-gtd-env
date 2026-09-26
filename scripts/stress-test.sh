@@ -14,6 +14,14 @@
 # Knobs (env): N=50 (repeats per correctness test)  N_CONTROL=20
 #   PAR=8 PAR_CALLS=25 (concurrency)  SOAK_MIN=10  OUT=<results dir>
 #
+# Long runs: start this with the harness's own backgrounding (the Bash tool's
+# run_in_background) and NEVER `nohup ... & disown`. A detached process is
+# invisible to Claude Code, so the session looks idle and the platform
+# reclaims the VM: the disk survives, every process dies, and the run just
+# stops mid-phase (it happened on the first full run, 26.9.26). If
+# /proc/sys/kernel/random/boot_id changed during a run, the machine restarted
+# and anything running across that point is gone.
+#
 # Every test is recorded as a row in $OUT/results.tsv; failing outputs are
 # kept alongside it. Run as root (the harness user in these environments).
 set -uo pipefail
