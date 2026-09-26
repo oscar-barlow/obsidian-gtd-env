@@ -58,8 +58,10 @@ DEB="/tmp/obsidian_${OBSIDIAN_VERSION}_amd64.deb"
 curl -sSL -o "${DEB}" \
   "https://github.com/obsidianmd/obsidian-releases/releases/download/v${OBSIDIAN_VERSION}/obsidian_${OBSIDIAN_VERSION}_amd64.deb"
 sudo apt-get install -y -qq "${DEB}"
-# Electron won't run as root without --no-sandbox; run it as a non-root user
-# with a working SUID sandbox helper instead.
+# The SUID sandbox helper doesn't work reliably in container runtimes (no
+# user-namespace / setuid support), so the GUI is launched with --no-sandbox
+# below. Keep the chmod as a fallback for any Electron codepath that probes the
+# helper before seeing the flag.
 sudo chmod 4755 /opt/Obsidian/chrome-sandbox
 
 # ---------------------------------------------------------------------------
@@ -149,13 +151,22 @@ sudo chown -R "${OBS_USER}:${OBS_USER}" "${VAULT_DIR}"
 # moments after the hook reports success — the socket appears just long enough
 # for the checks below to pass, then every later `obx` call finds nothing home.
 if ! pgrep -f "Xvfb ${DISPLAY_NUM}" >/dev/null; then
-  sudo -u "${OBS_USER}" setsid nohup Xvfb "${DISPLAY_NUM}" -screen 0 1280x800x24 \
+  sudo -u "${OBS_USER}" setsid nohup Xvfb "${DISPLAY_NUM}" -screen 0 640x480x24 \
+    -nolisten tcp \
     >/tmp/xvfb.log 2>&1 </dev/null &
   sleep 1
 fi
 if [ ! -S "${SOCK}" ]; then
   sudo -u "${OBS_USER}" -- env DISPLAY="${DISPLAY_NUM}" setsid nohup \
-    /opt/Obsidian/obsidian --disable-gpu --disable-dev-shm-usage \
+    /opt/Obsidian/obsidian \
+    --no-sandbox \
+    --disable-gpu \
+    --disable-software-rasterizer \
+    --disable-dev-shm-usage \
+    --disable-renderer-backgrounding \
+    --disable-background-timer-throttling \
+    --disable-backgrounding-occluded-windows \
+    --disable-hang-monitor \
     >"/home/${OBS_USER}/gui.log" 2>&1 </dev/null &
   for _ in $(seq 1 90); do [ -S "${SOCK}" ] && break; sleep 0.5; done
 fi
