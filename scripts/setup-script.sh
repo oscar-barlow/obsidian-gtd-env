@@ -39,13 +39,14 @@ log() { printf '\n=== %s ===\n' "$*"; }
 log "1/7  System dependencies"
 # xvfb: virtual display for the GUI + CLI client.
 # libsecret-1-0 + gnome-keyring + dbus-x11: keytar backend for obsidian-headless.
+# python3: runs `obx`, the CLI socket client (see 6/7).
 # Some base images carry broken third-party PPAs (deadsnakes, ondrej/php) that
 # 403 on noble and would abort `apt-get update`; drop them and don't be fatal.
 sudo grep -rl 'ppa.launchpadcontent.net' /etc/apt/sources.list.d/ 2>/dev/null \
   | sudo xargs -r rm -f || true
 sudo apt-get update -qq || true
 sudo apt-get install -y -qq \
-  xvfb libsecret-1-0 gnome-keyring dbus-x11 ca-certificates curl
+  xvfb libsecret-1-0 gnome-keyring dbus-x11 ca-certificates curl python3
 
 # python-dateutil: RRULE expansion + tz handling for scripts/parse_ics.py (the
 # weekly-review calendar check). Installed explicitly here rather than relying
@@ -126,7 +127,43 @@ printf '{"cli":true,"vaults":{"%s":{"path":"%s","ts":1700000000000,"open":true}}
   | sudo -u "${OBS_USER}" tee "${OBS_HOME}/.config/obsidian/obsidian.json" >/dev/null
 
 # ---------------------------------------------------------------------------
-log "6/7  Install 'obsidian-up' (session-time sync + launch) and 'obx' (client)"
+log "6/7  Install 'as-obs', 'obsidian-up' (session-time sync + launch) and 'obx' (client)"
+
+# as-obs: run a command as obs -- the equivalent of `sudo -u obs -- env
+# DISPLAY=:99 ...`, but WITHOUT sudo, so the GUI can leave a core dump if it
+# crashes. sudo 1.9 pins the child's hard RLIMIT_CORE to 0 (no limits.d entry
+# overrides it), so nothing launched through it can ever dump core -- and
+# there's no other evidence to fall back on: Obsidian never starts Electron's
+# crash reporter, so ~/.config/obsidian/Crashpad only ever holds a client_id.
+# `runuser` keeps the core limit but drops nofile back to 1024, the old
+# segfault trap; setpriv keeps root's limits (nofile 20000, core unlimited).
+# The env is rebuilt from scratch to match what sudo's env_reset + our env_keep
+# gave the GUI: HOME matters most -- the CLI socket path is derived from it.
+# Runs from ${CRASH_DIR} because core_pattern is a bare "core" (written to the
+# crashing process's cwd), and the caller's cwd usually isn't obs-writable.
+sudo tee /usr/local/bin/as-obs >/dev/null <<EOF
+#!/usr/bin/env bash
+OBS_USER="${OBS_USER}"; OBS_HOME="${OBS_HOME}"; DISPLAY_NUM="${DISPLAY_NUM}"
+EOF
+sudo tee -a /usr/local/bin/as-obs >/dev/null <<'EOF'
+set -euo pipefail
+[ "$(id -u)" -eq 0 ] || exec sudo "$0" "$@"
+CRASH_DIR="${OBS_HOME}/crash"
+install -d -o "${OBS_USER}" -g "${OBS_USER}" "${CRASH_DIR}"
+cd "${CRASH_DIR}"
+ulimit -c unlimited 2>/dev/null || true
+ulimit -n "$(ulimit -Hn)" 2>/dev/null || true
+keep=()
+for v in LANG NODE_EXTRA_CA_CERTS HTTPS_PROXY https_proxy HTTP_PROXY http_proxy \
+         NO_PROXY no_proxy SSL_CERT_FILE CURL_CA_BUNDLE; do
+  [ -n "${!v:-}" ] && keep+=("${v}=${!v}")
+done
+exec setpriv --reuid="${OBS_USER}" --regid="${OBS_USER}" --init-groups \
+  env -i HOME="${OBS_HOME}" USER="${OBS_USER}" LOGNAME="${OBS_USER}" SHELL=/bin/bash \
+         PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+         DISPLAY="${DISPLAY_NUM}" "${keep[@]}" "$@"
+EOF
+sudo chmod +x /usr/local/bin/as-obs
 
 # Build-time constants baked in; runtime values (SECRET_*, NODE_EXTRA_CA_CERTS,
 # HTTPS_PROXY) are referenced live and must NOT be expanded now -> quoted heredoc.
@@ -224,11 +261,33 @@ sudo chown -R "${OBS_USER}:${OBS_USER}" "${VAULT_DIR}"
 # `timeout` on every single CLI round trip: a bare call has no way to fail —
 # it just hangs the whole session-start hook. `timeout` turns a stuck call
 # into "this attempt didn't land," which the readiness probe and the
-# plugin-enable loop below just try again.
-obx() { timeout 15 sudo -u "${OBS_USER}" -- env DISPLAY="${DISPLAY_NUM}" obsidian "$@" 2>/dev/null; }
+# plugin-enable loop below just try again. (/usr/local/bin/obx applies it; it
+# also can't spawn a second GUI when this one is dead -- see obx below.)
+obx() { OBX_TIMEOUT=15 /usr/local/bin/obx "$@" 2>/dev/null; }
+
+# Before anything relaunches the GUI (which truncates gui.log, and on a fresh
+# launch clears the Chromium caches), move the previous run's logs and any
+# core dumps aside into ${CRASH_DIR}/<timestamp>-gui/. Otherwise the recovery
+# path destroys exactly the evidence needed to explain why recovery was
+# needed. Keeps the newest 5 archives (a GUI core is ~70MB on disk, sparse).
+CRASH_DIR="/home/${OBS_USER}/crash"
+archive_previous_run() {
+  local gl="/home/${OBS_USER}/gui.log" ol="/home/${OBS_USER}/.config/obsidian/obsidian.log"
+  local cores=("${CRASH_DIR}"/core*)
+  [ -s "${gl}" ] || [ -e "${cores[0]}" ] || return 0
+  local d="${CRASH_DIR}/$(date +%Y%m%d-%H%M%S)-gui"
+  sudo install -d -o "${OBS_USER}" -g "${OBS_USER}" "${d}"
+  [ -s "${gl}" ] && sudo mv "${gl}" "${d}/"
+  [ -s "${ol}" ] && sudo cp "${ol}" "${d}/"
+  [ -e "${cores[0]}" ] && sudo mv "${cores[@]}" "${d}/"
+  ls -1dt "${CRASH_DIR}"/*/ 2>/dev/null | tail -n +6 | xargs -r sudo rm -rf
+  echo "obsidian-up: archived previous GUI run's logs/cores to ${d}" >&2
+}
 
 launched=""
 for attempt in 1 2 3; do
+  [ -S "${SOCK}" ] || archive_previous_run
+
   # Only a genuinely fresh launch (no Xvfb, no socket) gets its Chromium cache
   # cleared first -- vault content and plugin config live under ${VAULT_DIR},
   # not here, so this only ever throws away disposable browser-engine state;
@@ -252,8 +311,10 @@ for attempt in 1 2 3; do
       >/tmp/xvfb.log 2>&1 </dev/null &
     sleep 1
   fi
+  # as-obs rather than sudo so a GUI segfault can leave a core in ${CRASH_DIR}
+  # (it also raises nofile, which the ulimit below used to do on its own).
   if [ ! -S "${SOCK}" ]; then
-    sudo -u "${OBS_USER}" -- env DISPLAY="${DISPLAY_NUM}" setsid nohup bash -c '
+    /usr/local/bin/as-obs setsid nohup bash -c '
       ulimit -n "$(ulimit -Hn)" 2>/dev/null || true
       exec /opt/Obsidian/obsidian \
         --no-sandbox \
@@ -288,7 +349,7 @@ for attempt in 1 2 3; do
   fi
 
   echo "obsidian-up: attempt ${attempt}/3: socket appeared but never answered (crashed or stuck during startup) -- cleaning up and retrying." >&2
-  sudo pkill -9 -f "/opt/Obsidian/obsidian" 2>/dev/null || true
+  pkill -9 -u "${OBS_USER}" -f "^/opt/Obsidian/obsidian" 2>/dev/null || true
   sudo rm -f "${SOCK}"
   sleep 2
 done
@@ -328,19 +389,86 @@ if [ -n "${missing}" ]; then
   echo "obsidian-up: see /home/${OBS_USER}/gui.log" >&2
   exit 1
 fi
-echo "Obsidian ready. Plugins loaded: dataview, obsidian-charts"
+
+# "Plugins loaded" is not "Dataview can answer". On a cold start (empty
+# IndexedDB, i.e. every fresh container) Dataview sets index.initialized=true
+# almost immediately and then keeps filling in as Obsidian parses files:
+# measured from the moment the plugins loaded, dv.pages() went 967 -> 2177 and
+# the active-project count 0 -> 13 over ~3s. A query in that window gets a
+# partial but plausible answer ("no active projects"), not an error. So wait
+# until Dataview has a page for every markdown file the vault knows about.
+indexed=""
+for _ in $(seq 1 60); do
+  case "$(obx eval 'code=app.plugins.plugins.dataview.api.pages().length>=app.vault.getMarkdownFiles().length')" in
+    *true*) indexed=1; break ;;
+  esac
+  sleep 1
+done
+if [ -z "${indexed}" ]; then
+  echo "obsidian-up: warning: Dataview index still incomplete after 60s; early Dataview answers may be partial." >&2
+fi
+echo "Obsidian ready. Plugins loaded: dataview, obsidian-charts$([ -n "${indexed}" ] && echo "; Dataview index complete")"
 EOF
 sudo chmod +x /usr/local/bin/obsidian-up
 
-# obx: CLI client wrapper for use during the session (named to avoid clashing
-# with obsidian-headless's own `ob`).
+# obx: CLI client for use during the session (named to avoid clashing with
+# obsidian-headless's own `ob`). It speaks the GUI's CLI socket protocol
+# directly -- one JSON line {argv, tty, cwd} in, the reply streamed back until
+# the GUI closes the socket -- instead of running `obsidian <args>`, because
+# that stock client is where every CLI failure seen so far came from:
+#   * It boots a whole Electron instance (zygotes, network service, sometimes a
+#     GPU process that fails to initialise under Xvfb) just to relay argv.
+#     The 26.9.26 segfault was this client dying, not the GUI.
+#   * It pipes its stdin into the socket, so an EOF stdin (/dev/null, which is
+#     what the harness's Bash tool gives it) half-closes the connection at
+#     once -- and the GUI drops the reply to any async command (e.g. `search`)
+#     whose client has half-closed. `search` came back empty ~40% of the time;
+#     sync ones (eval/read/files) happen to win the race.
+#   * It pipes the socket into process.stdout and on 'end' waits for 'drain'
+#     if anything is still buffered -- but 'drain' only fires after a write()
+#     returned false, so once output overflows a 64KB pipe it intermittently
+#     waits forever *after* printing everything (`files` into a pipe: 18/40).
+#   * With no GUI holding the single-instance lock it silently becomes a
+#     second full GUI instead of failing.
+# This client has none of those: it never half-closes, writes straight to
+# stdout, and a dead/stale socket is a clean exit 1. OBX_TIMEOUT (default 60s)
+# bounds the whole call. Root can connect to obs's socket without sudo.
 sudo tee /usr/local/bin/obx >/dev/null <<EOF
-#!/usr/bin/env bash
+#!/usr/bin/env python3
+SOCK = "${OBS_HOME}/.obsidian-cli.sock"
+EOF
+sudo tee -a /usr/local/bin/obx >/dev/null <<'EOF'
 # Examples:
 #   obx files
 #   obx read file="Some Project"
 #   obx eval code='app.plugins.plugins.dataview.api.pages().where(p=>p.status=="active").length'
-exec sudo -u ${OBS_USER} -- env DISPLAY=${DISPLAY_NUM} obsidian "\$@"
+import json, os, socket, sys, time
+
+deadline = time.monotonic() + float(os.environ.get("OBX_TIMEOUT", "60"))
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+try:
+    s.settimeout(10)
+    s.connect(SOCK)
+    s.sendall((json.dumps({"argv": sys.argv[1:], "tty": False, "cwd": os.getcwd()}) + "\n").encode())
+    # Deliberately no shutdown(SHUT_WR): the GUI drops async replies after one.
+    while True:
+        left = deadline - time.monotonic()
+        if left <= 0:
+            raise socket.timeout()
+        s.settimeout(left)
+        chunk = s.recv(65536)
+        if not chunk:
+            break
+        sys.stdout.buffer.write(chunk)
+        sys.stdout.buffer.flush()
+except socket.timeout:
+    sys.exit("obx: no complete reply from Obsidian within OBX_TIMEOUT -- GUI stuck or busy?")
+except (FileNotFoundError, ConnectionRefusedError) as e:
+    sys.exit(f"obx: Obsidian isn't running ({SOCK}: {e.strerror}); `obsidian-up` relaunches it.")
+except BrokenPipeError:
+    # e.g. `obx files | head`: the reader went away, which is fine. Point
+    # stdout at /dev/null so the interpreter's exit-time flush doesn't complain.
+    os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
 EOF
 sudo chmod +x /usr/local/bin/obx
 

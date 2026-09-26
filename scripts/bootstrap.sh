@@ -13,6 +13,9 @@
 #     web UI, no edit to this file.
 #   - lexicographic sort works here because YYYY-MM-DD is fixed-width and
 #     zero-padded, so plain `sort`/`tail -1` finds the newest date correctly.
+#     Same-day re-releases (`make tag-live`) add a zero-padded `.02`, `.03`, ...
+#     suffix, which sorts after the bare tag and before the next day's, so
+#     this still picks the newest -- see scripts/tag-live.sh.
 #
 # `git ls-remote` (not the GitHub API) so this needs no auth on a public repo
 # and isn't subject to the API's tighter unauthenticated rate limit.
