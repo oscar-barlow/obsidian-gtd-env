@@ -56,8 +56,8 @@ This is the **preferred** way to read live state and make changes (the running a
 owns the vault, so edits reconcile cleanly). Useful commands:
 - `obs read path=<p>` · `obs search query=<text>` · `obs files` · `obs tasks` (filter!).
 - `obs create path=<p> content=<text>` · `obs append file=<n> content=<text>`.
-- `obs property:read file=<n> key=<k>` · `obs property:set file=<n> name=<k> value=<v>`
-  (note: `property:set` takes `name=`, **not** `key=`; add `type=text|number|...` for new keys).
+- `obs property:read file=<n> name=<k>` · `obs property:set file=<n> name=<k> value=<v>`
+  (note: both take `name=`, **not** `key=`; add `type=text|number|...` for new keys).
 - `obs task ref=<path:line>` — show/update a single task (e.g. mark done).
 - `obs template:read file="Weekly Review"` — read a template.
 - **`obs eval code='<js>'`** — run JS in the renderer; this is how you reach Dataview:
