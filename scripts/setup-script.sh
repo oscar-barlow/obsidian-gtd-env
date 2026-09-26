@@ -47,6 +47,12 @@ sudo apt-get update -qq || true
 sudo apt-get install -y -qq \
   xvfb libsecret-1-0 gnome-keyring dbus-x11 ca-certificates curl
 
+# python-dateutil: RRULE expansion + tz handling for scripts/parse_ics.py (the
+# weekly-review calendar check). Installed explicitly here rather than relying
+# on it happening to already be on the base image.
+pip3 install --quiet --break-system-packages python-dateutil 2>/dev/null \
+  || pip3 install --quiet python-dateutil
+
 # ---------------------------------------------------------------------------
 log "2/7  Install Obsidian desktop (${OBSIDIAN_VERSION})"
 ARCH="$(uname -m)"
