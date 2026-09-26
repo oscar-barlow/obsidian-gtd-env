@@ -407,6 +407,15 @@ done
 if [ -z "${indexed}" ]; then
   echo "obsidian-up: warning: Dataview index still incomplete after 60s; early Dataview answers may be partial." >&2
 fi
+
+# The index check above is trivially true on an empty vault (0 >= 0), so on
+# its own "index complete" can't tell a synced vault from a sync that pulled
+# nothing. Refuse to call that ready: GTD work against an empty or half-synced
+# vault would read as "nothing to do" rather than as an error.
+if [ ! -s "${VAULT_DIR}/GTD/Tasks.md" ]; then
+  echo "obsidian-up: vault at ${VAULT_DIR} looks unsynced (no GTD/Tasks.md) -- Obsidian is up but its data can't be trusted; check the sync output above." >&2
+  exit 1
+fi
 echo "Obsidian ready. Plugins loaded: dataview, obsidian-charts$([ -n "${indexed}" ] && echo "; Dataview index complete")"
 EOF
 sudo chmod +x /usr/local/bin/obsidian-up
